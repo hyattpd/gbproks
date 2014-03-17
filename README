@@ -25,7 +25,9 @@
 # runProdigalGenbank.pl   Runs Prodigal gene predictions on every genome in
 #                         the repository.
 #
+# ------------
 # Requirements
+# ------------
 #
 # Tested with Perl 5.8+
 # Dependencies include LWP::Simple, IO::Uncompress, File::Stat, File::Copy,
@@ -39,7 +41,10 @@
 # using an environment variable (NCBI_GENOME_ROOT), or you can specify the
 # directory on the command line of each script with the "--root" option.
 #
+# --------------
 # Example usage:
+# --------------
+
 # ./downloadGenbank.pl --root /home/me/data
 # ./processGenbank.pl --root /home/me/data
 # ./runProdigalGenbank.pl --root /home/me/data --prodigal /home/me/prodigal
@@ -92,6 +97,12 @@
 # Prod Protein File:	Relative path to the Prodigal FASTA file of proteins
 # Fasta File:	Relative path to the genome FASTA file.
 # 
+# Note that this file can sometimes become lost/corrupted if you interrupt
+# the processing script, or it exits with an error.  For this reason, a copy
+# of the file is saved to <root>/genbank/backup/genbank.summary.txt when the
+# script first executes.  The processing script is relatively fast, so you
+# can always reconstruct this file by running it if worse comes to worse.
+
 # ------------------------
 # MD5 Checksum Calculation
 # ------------------------

@@ -11,7 +11,7 @@ use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 ###############################################################################
 
 # Parse command line arguments
-my $version = "0.5.0";
+my $version = "v0.5.0";
 my $doAll = 0;
 my $rootDir = $ENV{'NCBI_GENOME_ROOT'};
 my $numArg = scalar @ARGV;

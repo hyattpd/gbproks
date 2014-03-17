@@ -1,1 +1,38 @@
-under construction
+###############################################################################
+# NCBI Prokaryotic Genome Downloading and Processing Scripts
+#
+# This is a simple set of scripts to download the entire set of bacterial and
+# archaeal genomes from NCBI and do some parsing/processing on them.
+#
+# Current scripts included are:
+#
+# downloadGenbank.pl:     Downloads the Genbank flat files and FASTA sequences
+#                         for every bacterial and archaeal genome.
+# processGenbank.pl:      Parses all the FASTA and Genbank files and records
+#                         additional metadata such as MD5 checksums, GC
+#                         content, individual contig lengths, full definition
+#                         and taxonomy lines, number of gaps and nonstandard
+#                         bases, etc.
+# runProdigalGenbank.pl   Runs Prodigal gene predictions on every genome in
+#                         the repository.
+#
+# Requirements
+#
+# Tested with Perl 5.8+
+# Dependencies include LWP::Simple, IO::Uncompress, File::Stat, File::Copy, Digest::MD5
+# These should all be included in a standard Perl installation.
+# You will need Prodigal (https://github.com/hyattpd/prodigal) to run gene
+# predictions.
+#
+# Each script must know where the "root directory" is located.  The Genbank
+# repository is placed in <root dir>/genbank.  You can specify this directory
+# using an environment variable (NCBI_GENOME_ROOT), or you can specify the
+# directory on the command line of each script with the "--root" option.
+#
+# Example usage:
+# ./downloadGenbank.pl --root /home/me/data
+# ./processGenbank.pl --root /home/me/data
+# ./runProdigalGenbank.pl --root /home/me/data --prodigal /home/me/prodigal
+#
+# Questions or comments should be directed to doug.hyatt@gmail.com
+###############################################################################

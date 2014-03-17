@@ -19,7 +19,8 @@
 # Requirements
 #
 # Tested with Perl 5.8+
-# Dependencies include LWP::Simple, IO::Uncompress, File::Stat, File::Copy, Digest::MD5
+# Dependencies include LWP::Simple, IO::Uncompress, File::Stat, File::Copy,
+# and Digest::MD5.
 # These should all be included in a standard Perl installation.
 # You will need Prodigal (https://github.com/hyattpd/prodigal) to run gene
 # predictions.

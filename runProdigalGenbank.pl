@@ -144,41 +144,49 @@ print STDERR "...$numSucc Prodigal jobs run with $numFail failures.\n";
 
 # Delete prodigal output files if no longer needed (only one node
 # performs this task).
-print STDERR "Deleting obsolete Prodigal output files...\n";
-my $numDel = 0;
 if($numTask == 1 || ($taskId%$numTask == 0)) {
+  print STDERR "Deleting obsolete Prodigal output files...\n";
+  my $numDel = 0;
   if(-e $compFnaDir) { # user has complete genomes
-    opendir DH, $compProdDir or
-      die "...error opening $compProdDir for reading...\n";
-    while(my $dline = readdir(DH)) {
-      next if($dline !~ /\.[a-z][a-z][a-z]$/);
-      my $stub = $dline;
-      $stub =~ s/\.[a-z][a-z][a-z]$//g;
-      if($sawGenome{$stub} eq "") {
-        print STDERR "...deleting file $dline...\n";
-        unlink("$compProdDir/$dline");
-        $numDel++;
+    if(opendir(DH, $compProdDir) != 0) {
+      while(my $dline = readdir(DH)) {
+        next if($dline !~ /\.[a-z][a-z][a-z]$/);
+        my $stub = $dline;
+        $stub =~ s/\.[a-z][a-z][a-z]$//g;
+        if($sawGenome{$stub} eq "") {
+          print STDERR "...deleting file $dline...\n";
+          unlink("$compProdDir/$dline");
+          $numDel++;
+        }
       }
+      closedir DH;
     }
-    closedir DH;
+    else {
+      warn "...error opening $compProdDir for reading,";
+      warn " unable to delete files...\n";
+    }
   }
   if(-e $wgsFnaDir) { # user has wgs genomes
-    opendir DH, $wgsProdDir or
-      die "...error opening $wgsProdDir for reading...\n";
-    while(my $dline = readdir(DH)) {
-      next if($dline !~ /\.[a-z][a-z][a-z]$/);
-      my $stub = $dline;
-      $stub =~ s/\.[a-z][a-z][a-z]$//g;
-      if($sawGenome{$stub} eq "") {
-        print STDERR "...deleting file $dline...\n";
-        unlink("$wgsProdDir/$dline");
-        $numDel++;
+    if(opendir(DH, $wgsProdDir) != 0) {
+      while(my $dline = readdir(DH)) {
+        next if($dline !~ /\.[a-z][a-z][a-z]$/);
+        my $stub = $dline;
+        $stub =~ s/\.[a-z][a-z][a-z]$//g;
+        if($sawGenome{$stub} eq "") {
+          print STDERR "...deleting file $dline...\n";
+          unlink("$wgsProdDir/$dline");
+          $numDel++;
+        }
       }
+      closedir DH;
     }
-    closedir DH;
+    else {
+      warn "...error opening $wgsProdDir for reading,";
+      warn " unable to delete files...\n";
+    }
   }
+  print STDERR "...deleted $numDel files.\n";
 }
-print STDERR "...deleted $numDel files.\n";
 exit 0;
 
 # Use File::stat to determine if any files are newer than ones we've
@@ -199,7 +207,10 @@ sub needsProcessing() {
   open $prodFh, "$prodStub.faa" or return 1;
   $prodTime = stat($prodFh)->mtime;
   close $prodFh;
-  open $curFh, $inputFna or die "couldn't open $inputFna for reading\n";
+  if(open($curFh, $inputFna) == 0) {
+    warn "couldn't open $inputFna for reading, skipping...\n";
+    return 0;
+  }
   $curTime = stat($curFh)->mtime;
   close $curFh;
   if($curTime >= $prodTime) { return 1; }

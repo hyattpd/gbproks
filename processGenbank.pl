@@ -40,17 +40,18 @@ print STDERR "Prokaryotic Genome NCBI Processing Script $version [Mar 2014]\n";
 print STDERR "###########################################################\n";
 
 # Set up local directories and remote ftp site
-my $compFnaDir = "$rootDir/complete_genome_fasta";
-my $compGbkDir = "$rootDir/complete_genome_gbk";
-my $compProdDir = "$rootDir/complete_prodigal";
-my $compMetaDir = "$rootDir/complete_metadata";
-my $wgsFnaDir = "$rootDir/wgs_genome_fasta";
-my $wgsGbkDir = "$rootDir/wgs_genome_gbk";
-my $wgsProdDir = "$rootDir/wgs_prodigal";
-my $wgsMetaDir = "$rootDir/wgs_metadata";
-my $backupDir = "$rootDir/backup";
-my $summary = "$rootDir/genbank.summary.txt";
-my $ncbiText = "$rootDir/ncbi.genomes.txt";
+my $gbkDir = "$rootDir/genbank";
+my $compFnaDir = "$gbkDir/complete_genome_fasta";
+my $compGbkDir = "$gbkDir/complete_genome_gbk";
+my $compProdDir = "$gbkDir/complete_prodigal";
+my $compMetaDir = "$gbkDir/complete_metadata";
+my $wgsFnaDir = "$gbkDir/wgs_genome_fasta";
+my $wgsGbkDir = "$gbkDir/wgs_genome_gbk";
+my $wgsProdDir = "$gbkDir/wgs_prodigal";
+my $wgsMetaDir = "$gbkDir/wgs_metadata";
+my $backupDir = "$gbkDir/backup";
+my $summary = "$gbkDir/genbank.summary.txt";
+my $ncbiText = "$gbkDir/ncbi.genomes.txt";
 my $backupSummary = "$backupDir/genbank.summary.txt";
 
 # If metadata directory doesn't exist, then create it.
@@ -155,8 +156,8 @@ while(my $line = <$ncbiFh>) {
   print $summaryFh "$localInfo[4]\t$localInfo[7]\t";
   print $summaryFh "$localInfo[8]\t$localInfo[9]\t";
   for(my $i = 14; $i < @ncbiInfo; $i++) { print $summaryFh "$ncbiInfo[$i]\t"; }
-  $prodFile = substr($prodFile, length($rootDir));
-  $fnaFile = substr($fnaFile, length($rootDir));
+  $prodFile = substr($prodFile, length($gbkDir));
+  $fnaFile = substr($fnaFile, length($gbkDir));
   print $summaryFh "$prodFile\t$fnaFile\n";
   $numSucc++;
 }

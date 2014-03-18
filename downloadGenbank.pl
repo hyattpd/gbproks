@@ -205,8 +205,8 @@ while(my $genome = <$prokFh>) {
   next if(-e $localFnaFile && upToDate($modifyDate, $localGbkFile,
           $localFnaFile) == 1 && -e $localGbkFile && $doAll == 0);
 
+  my @accessionList = (), my @uniqueAccessionList = ();
   # Refseq
-  my @accessionList = ();
   if($genomeData[8] ne "-" || $genomeData[10] ne "-") {
     if($genomeData[8] ne "-") {
       push @accessionList,  split /\,/, $genomeData[8];
@@ -224,8 +224,16 @@ while(my $genome = <$prokFh>) {
       push @accessionList,  split /\,/, $genomeData[11];
     }
   }
-  my $accString = join ',', @accessionList;
-  my $numAcc = scalar @accessionList;
+  # Remove redundant entries
+  my %sawElement;
+  foreach my $element (@accessionList) {
+    if(!defined($sawElement{$element})) {
+      push @uniqueAccessionList, $element;
+      $sawElement{$element} = 1;
+    }
+  }
+  my $accString = join ',', @uniqueAccessionList;
+  my $numAcc = scalar @uniqueAccessionList;
 
   print STDERR "...downloading files for complete genome $compAcc...\n";
   # Fetch the fasta sequences for a given list of accession numbers.

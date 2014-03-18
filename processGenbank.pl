@@ -12,7 +12,7 @@ $| = 1;
 ###############################################################################
 
 # Parse command line arguments
-my $version = "v0.5.0";
+my $version = "v0.6.0";
 my $doAll = 0;
 my $rootDir = $ENV{'NCBI_GENOME_ROOT'};
 my $numArg = scalar @ARGV;
@@ -36,7 +36,7 @@ if(!(-e $rootDir)) { die "Error: $rootDir does not exist!\n"; }
 
 # Print version information
 print STDERR "###########################################################\n";
-print STDERR "Prokaryotic Genome NCBI Processing Script $version [Feb 2014]\n";
+print STDERR "Prokaryotic Genome NCBI Processing Script $version [Mar 2014]\n";
 print STDERR "###########################################################\n";
 
 # Set up local directories and remote ftp site
@@ -95,16 +95,20 @@ print $summaryFh "Biosample Acc\tAssembly Acc\tReference\tProd Protein File";
 print $summaryFh "\tFasta File\n";
 
 # Cycle through NCBI genomes file and process anything with fasta or
-# gbk files more recent than the metadata files.
+# gbk files more recent than the metadata files.  The script checks for the
+# existence of WGS or Complete FASTA directories.  If they don't exist, it
+# assumes the user isn't using them in his/her repository and skips that
+# type.
 print "Processing genomes...\n";
 my $ncbiFh, my $id, my $fnaFile, my $gbkFile, my $metaFile, my $prodFile;
-my %sawComp, my %sawWgs;
+my %sawComp, my %sawWgs, my $numSucc = 0, my $numFail = 0;
 my $metaData;
 open $ncbiFh, $ncbiText or die "...couldn't open $ncbiText for reading\n";
 while(my $line = <$ncbiFh>) {
   next if($line =~ /^#/);
   my @ncbiInfo = split /[\n\r\t]+/, $line;
   if($ncbiInfo[12] =~ /^[A-Z][A-Z][A-Z][A-Z]/) {
+    next if(!(-e $wgsFnaDir));
     $id = substr($ncbiInfo[12], 0, 4);
     $sawWgs{$id} = 1;
     $fnaFile = "$wgsFnaDir/$id.fna";
@@ -112,7 +116,9 @@ while(my $line = <$ncbiFh>) {
     $prodFile = "$wgsProdDir/$id.faa";
     $metaFile = "$wgsMetaDir/$id.txt";
   }
-  elsif($ncbiInfo[8] ne "-" || $ncbiInfo[9] ne "-") {
+  elsif($ncbiInfo[8] ne "-" || $ncbiInfo[9] ne "-" ||
+        $ncbiInfo[10] ne "-" || $ncbiInfo[11] ne "-") {
+    next if(!(-e $compFnaDir));
     $id = "$ncbiInfo[3].$ncbiInfo[1]";
     $sawComp{$id} = 1;
     $fnaFile = "$compFnaDir/$id.fna";
@@ -123,6 +129,7 @@ while(my $line = <$ncbiFh>) {
   else { next; }
   if(!(-e $fnaFile) || !(-e $gbkFile)) {
     print STDERR "...couldn't find fna/gbk files for $id, skipping...\n";
+    $numFail++;
     next;
   }
   # Skip if the metadata file exists and is more recent than the gbk/fna files,
@@ -135,7 +142,11 @@ while(my $line = <$ncbiFh>) {
   # Process the genome
   print STDERR "...processing genome $id...\n";
   $metaData = processGenome($id, $fnaFile, $gbkFile, $metaFile);
-  if(!defined($metaData)) { die "...fatal error processing genome $id...\n"; }
+  if(!defined($metaData)) { 
+    $numFail++;
+    warn "...error processing genome $id...\n"; 
+    next;
+  }
 
   my @localInfo = split /[\t\r\n]+/, $metaData;
   print $summaryFh "$localInfo[0]\t$localInfo[1]\t";
@@ -148,35 +159,43 @@ while(my $line = <$ncbiFh>) {
   $prodFile = substr($prodFile, length($rootDir));
   $fnaFile = substr($fnaFile, length($rootDir));
   print $summaryFh "$prodFile\t$fnaFile\n";
+  $numSucc++;
 }
 close $ncbiFh;
 close $summaryFh;
+print STDERR "...$numSucc genomes successfully processed with";
+print STDERR " $numFail failures.\n";
 
-# Now delete complete genomes that we no longer need
+# Now delete complete genome metadata files that we no longer need
 print STDERR "Deleting local metadata files that are no longer needed...\n";
 my $numDel = 0;
-opendir DH, $compMetaDir or die "...open failed on $compMetaDir\n";
-while(my $dline = readdir(DH)) {
-  next if($dline !~ /\.txt$/);
-  my $compId = $dline;
-  $compId =~ s/\.txt$//g;
-  next if(defined($sawComp{$compId}));
-  print STDERR "...deleting file $dline...\n";
-  unlink("$compMetaDir/$dline");
-  $numDel++;
+if(-e $compFnaDir) { # user has complete genomes in repository
+  opendir DH, $compMetaDir or die "...open failed on $compMetaDir\n";
+  while(my $dline = readdir(DH)) {
+    next if($dline !~ /\.txt$/);
+    my $compId = $dline;
+    $compId =~ s/\.txt$//g;
+    next if(defined($sawComp{$compId}));
+    print STDERR "...deleting file $dline...\n";
+    unlink("$compMetaDir/$dline");
+    $numDel++;
+  }
+  closedir(DH);
 }
-closedir(DH);
-opendir DH, $wgsMetaDir or die "...open failed on $wgsMetaDir\n";
-while(my $dline = readdir(DH)) {
-  next if($dline !~ /\.txt$/);
-  my $wgsId = $dline;
-  $wgsId =~ s/\.txt$//g;
-  next if(defined($sawWgs{$wgsId}));
-  print STDERR "...deleting file $dline...\n";
-  unlink("$wgsMetaDir/$dline");
-  $numDel++;
+# Same for WGS metadata files
+if(-e $wgsFnaDir) { # user has WGS genomes in repository
+  opendir DH, $wgsMetaDir or die "...open failed on $wgsMetaDir\n";
+  while(my $dline = readdir(DH)) {
+    next if($dline !~ /\.txt$/);
+    my $wgsId = $dline;
+    $wgsId =~ s/\.txt$//g;
+    next if(defined($sawWgs{$wgsId}));
+    print STDERR "...deleting file $dline...\n";
+    unlink("$wgsMetaDir/$dline");
+    $numDel++;
+  }
+  closedir(DH);
 }
-closedir(DH);
 print STDERR "...deleted $numDel obsolete files.\n";
 exit 0;
 
@@ -210,8 +229,10 @@ sub processGenome() {
   my $metaFile = shift @_;
   my $sfh, my $metaFh;
 
-  open $metaFh, ">$metaFile" or
-    die "...couldn't open $metaFile for writing\n";
+  if(open($metaFh, ">$metaFile") == 0) { 
+    warn "...couldn't open $metaFile for writing\n";
+    return;
+  }
 
   # FASTA files first.  Each file has the following that needs to be
   # calculated: (1) MD5 Checksum, (2) Length, (3) GC Bases, (4) Nonstandard
@@ -220,8 +241,10 @@ sub processGenome() {
   my @gcBases = (), my @nonBases = (), my @numGaps = ();
   my @giNum = (), my @accNum = (); my $seqCtr = -1;
 
-  open $sfh, $fastaFile or
-    die "...failed to open file $fastaFile for reading\n";
+  if(open($sfh, $fastaFile) == 0) {
+    warn "...failed to open file $fastaFile for reading\n";
+    return;
+  }
   while(my $line = <$sfh>) {
     if($line =~ /^>/ && $seqCtr != -1) {
       $seqLen[$seqCtr] = length($sequence);
@@ -257,8 +280,10 @@ sub processGenome() {
   my @taxonomy = (), my @taxonId = (), my $reading = 0;
   my @definition = (), my @repliconType = (), my @repliconDesc = ();
   $seqCtr = -1;
-  open $sfh, $gbkFile or
-    die "...failed to open file $gbkFile for reading\n";
+  if(open($sfh, $gbkFile) == 0) {
+    warn "...failed to open file $gbkFile for reading\n";
+    return;
+  }
   while(my $gbkLine = <$sfh>) {
     if($gbkLine =~ /^\/\//) {
       $dateMod[$seqCtr] = ($gbkText =~ /LOCUS.+?\s(\S+)\n/sg)[0];

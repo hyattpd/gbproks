@@ -40,7 +40,6 @@ print STDERR "Prokaryotic Genome NCBI Processing Script $version [Mar 2014]\n";
 print STDERR "###########################################################\n";
 
 # Set up local directories and remote ftp site
-my $rootDir = "/auto/compgen/data/genbank"; 
 my $compFnaDir = "$rootDir/complete_genome_fasta";
 my $compGbkDir = "$rootDir/complete_genome_gbk";
 my $compProdDir = "$rootDir/complete_prodigal";

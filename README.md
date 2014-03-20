@@ -4,9 +4,19 @@ A set of tools to create your own genome repository that contains
 all the bacterial and archaeal genomes (both draft and finished)
 from NCBI's Genbank.
 
+####Perl Requirements
+
 These scripts have been tested on Perl 5.8+ and use Digest::MD5,
 File::Copy, File::Stat, IO::Uncompress, and LWP::Simple, all of which
-should be part of a standard Perl installation.
+should be part of a standard Perl installation.  The scripts expect perl
+to be in /usr/bin/perl, but you can bypass this by running them with
+
+```
+perl downloadGenbank.pl
+perl processGenbank.pl
+```
+
+or edit the scripts to reflect the correct path to your Perl binary.
 
 ####Setting up the Root Directory
 
@@ -30,7 +40,7 @@ Or, when you call each script, you can specify the root directory manually:
 ./processGenbank.pl --root /home/me/repository
 ./runProdigalGenbank.pl --root /home/me/repository
 ```
-####downloadGenbank.pl
+####Download the FASTA and Genbank files for every NCBI bacterial and archaeal genome
 
 text
 

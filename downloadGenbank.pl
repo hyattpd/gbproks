@@ -3,7 +3,6 @@
 use strict;
 use File::stat;
 use LWP::Simple;
-use LWP::UserAgent;
 use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 ###############################################################################
@@ -144,7 +143,8 @@ if($completeOnly == 0) {
 
 # Go through and download any new genomes in the list
 print STDERR "Downloading new or modified genome projects...\n";
-my %sawWgs, my %sawComp, my $wgsAcc, my $compAcc, my $retVal;
+    my %sawComp, my %sawWgs;
+my %sawAssembly, my $wgsAcc, my $compAcc, my $retVal, my $assemblyId;
 my $localFnaFile, my $localGbkFile;
 my $remoteFnaFile, my $remoteGbkFile;
 my $numFail = 0, my $numSucc = 0; my $prokFh;
@@ -153,6 +153,16 @@ while(my $genome = <$prokFh>) {
   next if($genome =~ /^#/);
   my @genomeData = split /\t/, $genome;
 
+  # Skip if no assembly ID
+  $assemblyId = $genomeData[21];
+  next if($assemblyId eq "-");
+  $assemblyId =~ s/\.[^\.]+$//;
+  if(defined($sawAssembly{$assemblyId})) {
+    print STDERR "...warning duplicate assembly in";
+    print STDERR " NCBI file [$assemblyId]...\n";
+    next;
+  }
+
   # WGS
   if($completeOnly == 0 && $genomeData[12] ne "-" && 
      $genomeData[12] ne "Unplaced") {
@@ -160,9 +170,11 @@ while(my $genome = <$prokFh>) {
     next if($wgsAcc !~ /[A-Z][A-Z][A-Z][A-Z]/); 
     next if(!defined($wgsFnaFiles{$wgsAcc}));
     next if(!defined($wgsGbkFiles{$wgsAcc}));
-    $sawWgs{$wgsAcc} = 1;
-    $localFnaFile = "$wgsDlDir/$wgsFnaFiles{$wgsAcc}";
-    $localGbkFile = "$wgsDlDir/$wgsGbkFiles{$wgsAcc}";
+    $sawAssembly{$assemblyId} = 1;
+    $localFnaFile = "$wgsDlDir/$assemblyId.fna.gz";
+    $localGbkFile = "$wgsDlDir/$assemblyId.gbk.gz";
+    $remoteFnaFile = "$wgsFtp/$wgsFnaFiles{$wgsAcc}";
+    $remoteGbkFile = "$wgsFtp/$wgsGbkFiles{$wgsAcc}";
     # Only skip this genome if both zip files exist and are the same size as 
     # at the ftp site.
     # Date information proved unreliable (too many ftp files have newer date
@@ -171,13 +183,14 @@ while(my $genome = <$prokFh>) {
             $wgsSizes{$wgsFnaFiles{$wgsAcc}} && -e $localGbkFile && 
             -s $localGbkFile == $wgsSizes{$wgsGbkFiles{$wgsAcc}} &&
             $doAll == 0);
-    print STDERR "...downloading files for WGS project $wgsAcc...\n";
-    $retVal = getstore("$wgsFtp/$wgsFnaFiles{$wgsAcc}", $localFnaFile);
+    print STDERR "...downloading files for WGS project $wgsAcc ";
+    print STDERR "[assembly $assemblyId]...\n";
+    $retVal = getstore($remoteFnaFile, $localFnaFile);
     if($retVal != 200) {
       print STDERR "......download failed on $localFnaFile\n"; $numFail++;
     }
     else { $numSucc++; }
-    $retVal = getstore("$wgsFtp/$wgsGbkFiles{$wgsAcc}", $localGbkFile);
+    $retVal = getstore($remoteGbkFile, $localGbkFile);
     if($retVal != 200) {
       print STDERR "......download failed on $localGbkFile\n"; $numFail++;
     }
@@ -186,7 +199,7 @@ while(my $genome = <$prokFh>) {
   }
   next if($genomeData[12] =~ /^[A-Z][A-Z][A-Z][A-Z]/);
   next if($wgsOnly == 1);
- 
+
   # Skip this genome unless it has a Refseq/INSDC sequence.
   # Then check the date and compare it to modify date.  Only download
   # if the modify date is newer than what we have.
@@ -195,13 +208,9 @@ while(my $genome = <$prokFh>) {
   my $modifyDate = ($genomeData[17] ne "-"?$genomeData[17]:$genomeData[16]);
   if($modifyDate eq "-") { print STDERR "......date error $genome"; }
   next if($modifyDate eq "-" || $genomeData[1] eq "-" || $genomeData[3] eq "-");
-  $compAcc = "$genomeData[3].$genomeData[1]";
-  if(defined($sawComp{$compAcc})) {
-    print "error! duplicate entry $compAcc!\n";
-  }
-  else { $sawComp{$compAcc} = 1; }
-  $localGbkFile = "$compGbkDir/$compAcc.gbk";
-  $localFnaFile = "$compFnaDir/$compAcc.fna";
+  $sawAssembly{$assemblyId} = 1;
+  $localGbkFile = "$compGbkDir/$assemblyId.gbk";
+  $localFnaFile = "$compFnaDir/$assemblyId.fna";
   next if(-e $localFnaFile && upToDate($modifyDate, $localGbkFile,
           $localFnaFile) == 1 && -e $localGbkFile && $doAll == 0);
 
@@ -320,32 +329,37 @@ close $prokFh;
 print STDERR "...downloaded $numSucc files successfully with ";
 print STDERR "$numFail failures.\n";
 
-# Delete any WGS zip files which are no longer at the ftp site.
-if($completeOnly == 0) {
-  print STDERR "Deleting local WGS zip files that are no longer needed...\n";
-  my $numDel = 0;
-  if(opendir(DH, $wgsDlDir) != 0) {
-    while(my $dline = readdir(DH)) {
-      next if($dline !~ /\.gz$/);
-      my $wgsId = ($dline =~ /\.([A-Z][A-Z][A-Z][A-Z])\./)[0];
-      next if(defined($sawWgs{$wgsId}));
-      print STDERR "...deleting file $dline...\n";
-      unlink("$wgsDlDir/$dline");
-      $numDel++;
-    }
-    closedir DH;
+# Delete any obsolete files which are no longer in NCBI's genome list.
+my @directories = ( $wgsDlDir, $wgsFnaDir, $wgsGbkDir, $compFnaDir, 
+                    $compGbkDir );
+my $numDel = 0;
+print STDERR "Deleting local files that are no longer needed...\n";
+foreach my $dir (@directories) {
+  next if($completeOnly == 1 && $dir =~ /\/wgs\_/);
+  next if($wgsOnly == 1 && $dir =~ /\/complete\_/);
+  if(opendir(DH, $dir) == 0) {
+    warn "...open failed on $dir, unable to delete files...\n";
+    next;
   }
-  else { warn "...open failed on $wgsDlDir, unable to delete files...\n"; }
-  print STDERR "...deleted $numDel obsolete files.\n";
+  while(my $dline = readdir(DH)) {
+    next if($dline eq "." || $dline eq "..");
+    my $id = ($dline =~ /^([^\.]+)\./)[0];
+    next if(defined($id) && defined($sawAssembly{$id}));
+    print STDERR "...deleting file $dir/$dline...\n";
+    unlink("$dir/$dline");
+    $numDel++;
+  }
+  closedir DH;
 }
+print STDERR "...deleted $numDel obsolete files.\n";
 
 # Uncompress any WGS files that need to be uncompressed
 if($completeOnly == 0) {
   print STDERR "Checking for WGS zip files that need uncompressing...\n";
   my $srcFile, my $destFile, my $numUnzip = 0, my $retVal;
-  foreach(keys %sawWgs) {
-    next if(!defined($wgsFnaFiles{$_}) || !defined($wgsGbkFiles{$_}));
-    $srcFile = "$wgsDlDir/$wgsFnaFiles{$_}";
+  foreach(keys %sawAssembly) {
+    $srcFile = "$wgsDlDir/$_.fna.gz";
+    next if(!(-e $srcFile)); # isn't a wgs genome
     $destFile = "$wgsFnaDir/$_.fna";
     if(needsUnzipping($srcFile, $destFile) == 1) {
       print STDERR "...uncompressing $destFile...\n";
@@ -358,7 +372,7 @@ if($completeOnly == 0) {
         $retVal = gunzip $srcFile => $destFile;
       }
     }
-    $srcFile = "$wgsDlDir/$wgsGbkFiles{$_}";
+    $srcFile = "$wgsDlDir/$_.gbk.gz";
     $destFile = "$wgsGbkDir/$_.gbk";
     if(needsUnzipping($srcFile, $destFile) == 1) {
       print STDERR "...uncompressing $destFile...\n";
@@ -373,79 +387,6 @@ if($completeOnly == 0) {
     }
   }
   print STDERR "...unzipped $numUnzip files.\n";
-}
-
-# Delete any WGS gbk/fna files which are no longer at the ftp site.
-if($completeOnly == 0) {
-  print STDERR "Deleting local WGS gbk/fna files that are no longer needed...\n";
-  my $numDel = 0;
-  if(opendir(DH, $wgsFnaDir) != 0) {
-    while(my $dline = readdir(DH)) {
-      next if($dline !~ /\.fna$/);
-      my $wgsId = substr($dline, 0, 4);
-      next if(defined($sawWgs{$wgsId}));
-      print STDERR "...deleting file $dline...\n";
-      unlink("$wgsFnaDir/$dline");
-      $numDel++;
-    }
-    closedir DH;
-  }
-  else {
-    warn "...open failed on $wgsFnaDir, unable to delete files...\n";
-  }
-  if(opendir(DH, $wgsGbkDir) != 0) {
-    while(my $dline = readdir(DH)) {
-      next if($dline !~ /\.gbk$/);
-      my $wgsId = substr($dline, 0, 4);
-      next if(defined($sawWgs{$wgsId}));
-      print STDERR "...deleting file $dline...\n";
-      unlink("$wgsGbkDir/$dline");
-      $numDel++;
-    }
-  closedir DH;
-  }
-  else {
-    warn "...open failed on $wgsGbkDir, unable to delete files...\n";
-  }
-  print STDERR "...deleted $numDel obsolete files.\n";
-}
-
-# Now delete refseq/insdc genomes that we no longer need
-if($wgsOnly == 0) {
-  print STDERR "Deleting local finished gbk/fna files that are";
-  print STDERR " no longer needed...\n";
-  my $numDel = 0;
-  if(opendir(DH, $compFnaDir) != 0) {
-    while(my $dline = readdir(DH)) {
-      next if($dline !~ /\.fna$/);
-      my $compId = $dline;
-      $compId =~ s/\.fna$//g;
-      next if(defined($sawComp{$compId}));
-      print STDERR "...deleting file $dline...\n";
-      unlink("$compFnaDir/$dline");
-      $numDel++;
-    }
-    closedir DH;
-  }
-  else {
-    warn "...open failed on $compFnaDir, unable to delete files...\n";
-  }
-  if(opendir(DH, $compGbkDir) != 0) {
-    while(my $dline = readdir(DH)) {
-      next if($dline !~ /\.gbk$/);
-      my $compId = $dline;
-      $compId =~ s/\.gbk$//g;
-      next if(defined($sawComp{$compId}));
-      print STDERR "...deleting file $dline...\n";
-      unlink("$compGbkDir/$dline");
-      $numDel++;
-    }
-    closedir DH;
-  }
-  else {
-    warn "...open failed on $compGbkDir, unable to delete files...\n";
-  }
-  print STDERR "...deleted $numDel obsolete files.\n";
 }
 exit 0;
 

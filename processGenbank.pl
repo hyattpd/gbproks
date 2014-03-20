@@ -91,8 +91,7 @@ print $summaryFh "Group\tSubgroup\tSeqLen\tGC%\tNumSeq\tRefseq Chr\tRefseq";
 print $summaryFh " Plasmid\tINSDC Chr\tINSDC Plasmid\tWGS\tFull Taxonomy\t";
 print $summaryFh "Nonst Bases\tNum Gaps\tPasses Checks\tGbk Genes\tGbk ";
 print $summaryFh "Proteins\tRelease Date\tModify Date\tStatus\tCenter\t";
-print $summaryFh "Biosample Acc\tAssembly Acc\tReference\tProd Protein File";
-print $summaryFh "\tFasta File\n";
+print $summaryFh "Biosample Acc\tProd Protein File\tFasta File\n";
 
 # Cycle through NCBI genomes file and process anything with fasta or
 # gbk files more recent than the metadata files.  The script checks for the
@@ -101,16 +100,27 @@ print $summaryFh "\tFasta File\n";
 # type.
 print "Processing genomes...\n";
 my $ncbiFh, my $id, my $fnaFile, my $gbkFile, my $metaFile, my $prodFile;
-my %sawComp, my %sawWgs, my $numSucc = 0, my $numFail = 0;
+my %sawAssembly, my $numSucc = 0, my $numFail = 0;
 my $metaData;
 open $ncbiFh, $ncbiText or die "...couldn't open $ncbiText for reading\n";
 while(my $line = <$ncbiFh>) {
   next if($line =~ /^#/);
   my @ncbiInfo = split /[\n\r\t]+/, $line;
+
+  # Skip if no assembly id for this genome
+  $id = $ncbiInfo[21];
+  next if($id eq "-");
+  $id =~ s/\.[^\.]+$//;
+  if(defined($sawAssembly{$id})) {
+    print STDERR "...warning duplicate assembly in";
+    print STDERR " NCBI file [$id]...\n";
+    next;
+  }
+
   if($ncbiInfo[12] =~ /^[A-Z][A-Z][A-Z][A-Z]/) {
-    next if(!(-e $wgsFnaDir));
-    $id = substr($ncbiInfo[12], 0, 4);
-    $sawWgs{$id} = 1;
+    next if(!(-e $wgsFnaDir)); # skip wgs if the fasta dir doesn't exist
+    next if(!(-e $wgsGbkDir)); # skip wgs if the gbk dir doesn't exist
+    $sawAssembly{$id} = 1;
     $fnaFile = "$wgsFnaDir/$id.fna";
     $gbkFile = "$wgsGbkDir/$id.gbk";
     $prodFile = "$wgsProdDir/$id.faa";
@@ -118,9 +128,9 @@ while(my $line = <$ncbiFh>) {
   }
   elsif($ncbiInfo[8] ne "-" || $ncbiInfo[9] ne "-" ||
         $ncbiInfo[10] ne "-" || $ncbiInfo[11] ne "-") {
-    next if(!(-e $compFnaDir));
-    $id = "$ncbiInfo[3].$ncbiInfo[1]";
-    $sawComp{$id} = 1;
+    next if(!(-e $compFnaDir)); # skip complete if the fasta dir doesn't exist
+    next if(!(-e $compGbkDir)); # skip complete if the gbk dir doesn't exist
+    $sawAssembly{$id} = 1;
     $fnaFile = "$compFnaDir/$id.fna";
     $gbkFile = "$compGbkDir/$id.gbk";
     $prodFile = "$compProdDir/$id.faa";
@@ -155,7 +165,7 @@ while(my $line = <$ncbiFh>) {
   for(my $i = 8; $i < 13; $i++) { print $summaryFh "$ncbiInfo[$i]\t"; }
   print $summaryFh "$localInfo[4]\t$localInfo[7]\t";
   print $summaryFh "$localInfo[8]\t$localInfo[9]\t";
-  for(my $i = 14; $i < @ncbiInfo; $i++) { print $summaryFh "$ncbiInfo[$i]\t"; }
+  for(my $i = 14; $i < 21; $i++) { print $summaryFh "$ncbiInfo[$i]\t"; }
   $prodFile = substr($prodFile, length($gbkDir));
   $fnaFile = substr($fnaFile, length($gbkDir));
   print $summaryFh "$prodFile\t$fnaFile\n";
@@ -175,7 +185,7 @@ if(-e $compFnaDir) { # user has complete genomes in repository
     next if($dline !~ /\.txt$/);
     my $compId = $dline;
     $compId =~ s/\.txt$//g;
-    next if(defined($sawComp{$compId}));
+    next if(defined($sawAssembly{$compId}));
     print STDERR "...deleting file $dline...\n";
     unlink("$compMetaDir/$dline");
     $numDel++;
@@ -189,7 +199,7 @@ if(-e $wgsFnaDir) { # user has WGS genomes in repository
     next if($dline !~ /\.txt$/);
     my $wgsId = $dline;
     $wgsId =~ s/\.txt$//g;
-    next if(defined($sawWgs{$wgsId}));
+    next if(defined($sawAssembly{$wgsId}));
     print STDERR "...deleting file $dline...\n";
     unlink("$wgsMetaDir/$dline");
     $numDel++;

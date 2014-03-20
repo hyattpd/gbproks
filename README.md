@@ -1,3 +1,3 @@
-# NCBI Prokaryotic Genome Downloading/Processing Scripts
+## NCBI Prokaryotic Genome Downloading/Processing Scripts
 
 text

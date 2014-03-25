@@ -143,8 +143,7 @@ if($completeOnly == 0) {
 
 # Go through and download any new genomes in the list
 print STDERR "Downloading new or modified genome projects...\n";
-    my %sawComp, my %sawWgs;
-my %sawAssembly, my $wgsAcc, my $compAcc, my $retVal, my $assemblyId;
+my %sawAssembly, my $wgsAcc, my $retVal, my $assemblyId;
 my $localFnaFile, my $localGbkFile;
 my $remoteFnaFile, my $remoteGbkFile;
 my $numFail = 0, my $numSucc = 0; my $prokFh;
@@ -244,7 +243,7 @@ while(my $genome = <$prokFh>) {
   my $accString = join ',', @uniqueAccessionList;
   my $numAcc = scalar @uniqueAccessionList;
 
-  print STDERR "...downloading files for complete genome $compAcc...\n";
+  print STDERR "...downloading files for complete genome $assemblyId...\n";
   # Fetch the fasta sequences for a given list of accession numbers.
   my $efetch = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?';
   $efetch .= 'db=nuccore&rettype=fasta&retmode=text&id='.$accString;
@@ -276,7 +275,7 @@ while(my $genome = <$prokFh>) {
   close $writeFh;
   close $readFh;
   if($numContig != $numAcc) {
-    print STDERR "......incorrect number of FASTA sequences for $compAcc ";
+    print STDERR "......incorrect number of FASTA sequences for $assemblyId ";
     print STDERR "($numContig vs. $numAcc)...\n";
     $numFail++;
     unlink($localFnaFile);
@@ -315,7 +314,7 @@ while(my $genome = <$prokFh>) {
   close $writeFh;
   close $readFh;
   if($numContig != $numAcc) {
-    print STDERR "......incorrect number of Genbank sequences for $compAcc ";
+    print STDERR "......incorrect number of Genbank sequences for $assemblyId ";
     print STDERR "($numContig vs. $numAcc)...\n";
     $numFail++;
     unlink($localFnaFile);

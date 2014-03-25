@@ -40,7 +40,40 @@ Or, when you call each script, you can specify the root directory manually:
 ./processGenbank.pl --root /home/me/repository
 ./runProdigalGenbank.pl --root /home/me/repository
 ```
-####Download the FASTA and Genbank files for every NCBI bacterial and archaeal genome
+####Downloading the genomes
 
-text
+To download the genomes, simply do
+
+```
+./downloadGenbank.pl --root /home/me/repository
+```
+
+This will create the genome repository in **/home/me/repository/genbank**.
+Each genome is represented by its assembly ID, a unique identifier created
+by NCBI for each genome assembly.  (This means that a single strain may have
+multiple assemblies associated with it.)  
+
+Genomes from Refseq and INSDC are placed in the **complete** directories,
+i.e. **complete_genome_fasta** and **complete_genome_gbk**.  Genomes from WGS
+projects (whole genome shotgun assemblies) are placed in the **wgs** directories,
+i.e. **wgs_download**, **wgs_genome_fasta**, and **wgs_genome_gbk**.
+
+You can choose to download only genomes of one type (for example, only the
+complete genomes).
+
+```
+./downloadGenbank.pl --root /home/me/repository --complete
+./downloadGenbank.pl --root /home/me/repository --wgsonly
+```
+
+For more details on the downloading process, see the Wiki.  You can also do
+
+```
+./downloadGenbank.pl --help
+```
+
+for a complete list of options.
+
+
+
 

@@ -113,7 +113,7 @@ To run Prodigal on each genome, do the following:
 ```
 
 providing the path to the repository as well as to the Prodigal binary.  If the
-**--prodigal** option is omitted, the script just calls the binary 'prodigal' and
+**--prodigal** option is omitted, the script calls the binary 'prodigal' and
 assumes it exists in the user's path.  The script writes the various Prodigal output
 files to the **complete_prodigal** and **wgs_prodigal** subdirectories, including
 **.faa** files for proteins, **.dna** files for gene nucleotide sequences, **.stt** files for
@@ -129,7 +129,6 @@ be run in parallel.  For more details on this, do:
 
 or see the Wiki.
 
-####Questions/Comments?
+####Author
 
-If you have any questions or comments regarding these scripts, you can contact
-the author, Doug Hyatt, at doug.hyatt@gmail.com.
+Direct questions and comments to the author, Doug Hyatt, at https://github.com/hyattpd.

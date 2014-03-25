@@ -4,7 +4,7 @@ A set of tools to create your own genome repository that contains
 all the bacterial and archaeal genomes (both draft and finished)
 from NCBI's Genbank.
 
-####Perl Requirements
+####Perl requirements
 
 These scripts have been tested on Perl 5.8+ and use Digest::MD5,
 File::Copy, File::Stat, IO::Uncompress, and LWP::Simple, all of which
@@ -18,7 +18,7 @@ perl processGenbank.pl
 
 or edit the scripts to reflect the correct path to your Perl binary.
 
-####Setting up the Root Directory
+####Setting up the root directory
 
 The scripts require that you set an environment variable (**$NCBI_GENOME_ROOT**)
 or specify the root directory at the script command line.  The download script
@@ -42,7 +42,7 @@ Or, when you call each script, you can specify the root directory manually:
 ```
 ####Downloading the genomes
 
-To download the genomes, simply do
+To download the genomes, do the following:
 
 ```
 ./downloadGenbank.pl --root /home/me/repository
@@ -74,6 +74,62 @@ For more details on the downloading process, see the Wiki.  You can also do
 
 for a complete list of options.
 
+####Processing the genomes
 
+Once the genomes have been downloaded, the processing script can be used
+to record metadata for each genome and update the summary file with information
+for each genome.
 
+To run the processing script, do:
 
+```
+./processGenbank.pl --root /home/me/repository
+```
+
+where the root directory provided is the same as the one you used in the 
+download script.  The processing script creates (or updates) a tab-delimited file
+**genbank.summary.txt** in the **genbank** directory.  This file contains
+a great deal of information about each genome project.  For a detailed description
+of each column in this file, see the Wiki.
+
+In addition to the summary file, the script creates a tab-delimited **.txt** file for each
+genome in the **complete_metadata** or **wgs_metadata** subdirectories, depending
+if the genome is Refseq/INSDC or WGS, respectively.  These files contain metadata
+for each contig in the assembly.  For a description of the content of these files,
+see the Wiki.
+
+For a detailed list of options, do:
+
+```
+./processGenbank.pl --help
+```
+
+####Running Prodigal on each genome
+
+To run Prodigal on each genome, do the following:
+
+```
+./runProdigalGenbank.pl --root /home/me/repository --prodigal /usr/bin/prodigal
+```
+
+providing the path to the repository as well as to the Prodigal binary.  If the
+**--prodigal** option is omitted, the script just calls the binary 'prodigal' and
+assumes it exists in the user's path.  The script writes the various Prodigal output
+files to the **complete_prodigal** and **wgs_prodigal** subdirectories, including
+**.faa** files for proteins, **.dna** files for gene nucleotide sequences, **.stt** files for
+detailed information about each potential start site, **.gff** files for the lists
+of gene coordinates, and **.smm** files for summary statistics for each genome.
+
+The **runProdigalGenbank.pl** script can be run serially, but it is also designed to
+be run in parallel.  For more details on this, do:
+
+```
+./runProdigalGenbank.pl --help
+```
+
+or see the Wiki.
+
+####Questions/Comments?
+
+If you have any questions or comments regarding these scripts, you can contact
+the author, Doug Hyatt, at doug.hyatt@gmail.com.

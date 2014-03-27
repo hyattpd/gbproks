@@ -1,8 +1,11 @@
-## NCBI Prokaryotic Genome Downloading and Processing Scripts
+## GBProks: Download, update, and process prokaryotic genomes from NCBI
 
-A set of tools to create your own genome repository that contains
-all the bacterial and archaeal genomes (both draft and finished)
-from NCBI's Genbank.
+GBProks is a set of tools to create and update your own prokaryotic genome
+repository containing all the bacterial and archaeal genomes (both draft and finished)
+from NCBI's GenBank database.  These scripts will automatically download
+(in an incremental fashion) the microbial genomes from NCBI, calculate and record additional
+metadata such as MD5 checksums and GC content, and assist the user in running
+any tool they wish on each new genome in the repository.
 
 ####Perl requirements
 
@@ -12,8 +15,8 @@ should be part of a standard Perl installation.  The scripts expect perl
 to be in /usr/bin/perl, but you can bypass this by running them with
 
 ```
-perl downloadGenbank.pl
-perl processGenbank.pl
+perl downloadProks.pl
+perl processProks.pl
 ```
 
 or edit the scripts to reflect the correct path to your Perl binary.
@@ -22,7 +25,7 @@ or edit the scripts to reflect the correct path to your Perl binary.
 
 The scripts require that you set an environment variable (**$NCBI_GENOME_ROOT**)
 or specify the root directory at the script command line.  The download script
-will create a **genbank** directory in whichever root directory you specify.
+will create the repository in whichever root directory you specify.
 
 To set the variable in bash, do:
 ```
@@ -36,19 +39,19 @@ setenv NCBI_GENOME_ROOT /home/me/repository
 
 Or, when you call each script, you can specify the root directory manually:
 ```
-./downloadGenbank.pl --root /home/me/repository
-./processGenbank.pl --root /home/me/repository
-./runProdigalGenbank.pl --root /home/me/repository
+./downloadProks.pl --root /home/me/repository
+./processProks.pl --root /home/me/repository
+./runProdigal.pl --root /home/me/repository
 ```
 ####Downloading the genomes
 
 To download the genomes, do the following:
 
 ```
-./downloadGenbank.pl --root /home/me/repository
+./downloadProks.pl --root /home/me/repository
 ```
 
-This will create the genome repository in **/home/me/repository/genbank**.
+This will create the genome repository in **/home/me/repository/**.
 Each genome is represented by its assembly ID, a unique identifier created
 by NCBI for each genome assembly.  (This means that a single strain may have
 multiple assemblies associated with it.)  
@@ -62,14 +65,14 @@ You can choose to download only genomes of one type (for example, only the
 complete genomes).
 
 ```
-./downloadGenbank.pl --root /home/me/repository --complete
-./downloadGenbank.pl --root /home/me/repository --wgsonly
+./downloadProks.pl --root /home/me/repository --complete
+./downloadProks.pl --root /home/me/repository --wgsonly
 ```
 
 For more details on the downloading process, see the Wiki.  You can also do
 
 ```
-./downloadGenbank.pl --help
+./downloadProks.pl --help
 ```
 
 for a complete list of options.
@@ -78,12 +81,14 @@ for a complete list of options.
 
 Once the genomes have been downloaded, the processing script can be used
 to record metadata for each genome and update the summary file with information
-for each genome.
+for each genome.  When proteins are available, the script also extracts the
+protein sequences from the Genbank flat files into the **complete_genome_fasta** 
+and **wgs_genome_fasta** subdirectories.
 
 To run the processing script, do:
 
 ```
-./processGenbank.pl --root /home/me/repository
+./processProks.pl --root /home/me/repository
 ```
 
 where the root directory provided is the same as the one you used in the 
@@ -101,7 +106,7 @@ see the Wiki.
 For a detailed list of options, do:
 
 ```
-./processGenbank.pl --help
+./processProks.pl --help
 ```
 
 ####Running Prodigal on each genome
@@ -109,7 +114,7 @@ For a detailed list of options, do:
 To run Prodigal on each genome, do the following:
 
 ```
-./runProdigalGenbank.pl --root /home/me/repository --prodigal /usr/bin/prodigal
+./runProdigal.pl --root /home/me/repository --prodigal /usr/bin/prodigal
 ```
 
 providing the path to the repository as well as to the Prodigal binary.  If the
@@ -120,14 +125,35 @@ files to the **complete_prodigal** and **wgs_prodigal** subdirectories, includin
 detailed information about each potential start site, **.gff** files for the lists
 of gene coordinates, and **.smm** files for summary statistics for each genome.
 
-The **runProdigalGenbank.pl** script can be run serially, but it is also designed to
+The **runProdigal.pl** script can be run serially, but it is also designed to
 be run in parallel.  For more details on this, do:
 
 ```
-./runProdigalGenbank.pl --help
+./runProdigal.pl --help
 ```
 
 or see the Wiki.
+
+####Running Other Tools on each Genome
+
+The **runGenericTool.pl** script provides a template for the user
+to run any tool on the genomes in the repository in an incremental fashion, 
+provided the tool uses only one or more of the following as its inputs:
+
+1. The nucleotide FASTA genome sequence
+2. The FASTA file of the protein sequences extracted from the Genbank flat file.
+3. The FASTA file of the protein sequences calculated by Prodigal.
+
+Example usage:
+
+```
+./runGenericTool.pl --config /home/me/aragorn.cfg
+```
+
+where the file **aragorn.cfg** contains instructions on which tool to run,
+which options to use, and which input and output files to read and write, respectively.
+For a detailed description of this configuration file format and script options,
+see the Wiki.
 
 ####Author
 

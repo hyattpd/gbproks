@@ -41,7 +41,6 @@ for(my $i = 0; $i < $numArg; $i++) {
   else { die "Error: unrecognized option $arg.  Do $0 --help for commands.\n"; }
 }
 if(!defined($rootDir)) { die "Error: no root directory specified.\n"; }
-if(!(-e $rootDir)) { die "Error: $rootDir does not exist!\n"; }
 
 # Date hash
 my @dateText = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
@@ -446,7 +445,7 @@ sub help($) {
   print STDERR "downloadGenbank.pl [-c] [-d] [-h] [-r <root dir>] [-u] [-v]";
   print STDERR " [-w]\n\n";
   print STDERR "-c,--complete:   Only download complete genomes.\n";
-  print STDERR "-d,--doall   :   Do a full download (default: ";
+  print STDERR "-d,--doall   :   Do a full download/decompression (default: ";
   print STDERR "only do incremental update.\n";
   print STDERR "-h,--help    :   Print help information and exit.\n";
   print STDERR "-r,--root    :   Specify root directory.\n";

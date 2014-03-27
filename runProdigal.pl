@@ -95,12 +95,11 @@ print STDERR "NCBI Genbank Run_Prodigal Script $version [Mar 2014]\n";
 print STDERR "##################################################\n";
 
 # Set up local directories and remote ftp site
-my $gbkDir = "$rootDir/genbank";
-my $compFnaDir = "$gbkDir/complete_genome_fasta";
-my $compProdDir = "$gbkDir/complete_prodigal";
-my $wgsFnaDir = "$gbkDir/wgs_genome_fasta";
-my $wgsProdDir = "$gbkDir/wgs_prodigal";
-my $genomeList = "$gbkDir/genbank.summary.txt";
+my $compFnaDir = "$rootDir/complete_genome_fasta";
+my $compProdDir = "$rootDir/complete_prodigal";
+my $wgsFnaDir = "$rootDir/wgs_genome_fasta";
+my $wgsProdDir = "$rootDir/wgs_prodigal";
+my $genomeList = "$rootDir/genbank.summary.txt";
 
 # If prodigal directory doesn't exist, then create it.
 if(!(-e "$compProdDir") && -e $compFnaDir) { 
@@ -123,8 +122,8 @@ while(my $line = <FH>) {
   my @genomeInfo = split /[\t\r\n]+/, $line;
   my $numField = @genomeInfo;
   my $id = $genomeInfo[0];
-  my $prodFaa = "$gbkDir/$genomeInfo[$numField-2]";
-  my $inputFna = "$gbkDir/$genomeInfo[$numField-1]";
+  my $prodFaa = "$rootDir/$genomeInfo[$numField-2]";
+  my $inputFna = "$rootDir/$genomeInfo[$numField-1]";
   $sawGenome{$id} = 1;
   if($numTask == 1 || ($jobCtr%$numTask) == ($taskId%$numTask)) {
     if($doAll == 1 || needsProcessing($inputFna, $prodFaa) == 1) {

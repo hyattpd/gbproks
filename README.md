@@ -140,9 +140,10 @@ The **runGenericTool.pl** script provides a template for the user
 to run any tool on the genomes in the repository in an incremental fashion, 
 provided the tool uses only one or more of the following as its inputs:
 
-1. The nucleotide FASTA genome sequence
-2. The FASTA file of the protein sequences extracted from the Genbank flat file.
-3. The FASTA file of the protein sequences calculated by Prodigal.
+- The nucleotide FASTA genome sequences for the genome assembly.
+- The Genbank flat files for the genome assembly.
+- The FASTA file of the protein sequences extracted from the Genbank flat files.
+- The FASTA file of the protein sequences calculated by Prodigal.
 
 Example usage:
 

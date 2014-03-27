@@ -1,5 +1,9 @@
 #!/usr/bin/perl
 
+###############################################################################
+# Script to Process NCBI WGS Draft Genomes and Write Metadata
+###############################################################################
+
 use strict;
 use File::Copy qw(copy);
 use File::stat;
@@ -7,13 +11,16 @@ use Digest::MD5 qw(md5_hex);
 
 $| = 1;
 
-###############################################################################
-# Script to Process NCBI WGS Draft Genomes and Write Metadata
-###############################################################################
+sub processGenome($$$$);
+sub upToDate($@);
+sub help($);
+sub version($);
 
 # Parse command line arguments
 my $version = "v0.6.0";
 my $doAll = 0;
+my $completeOnly = 0;
+my $wgsOnly = 0;
 my $rootDir = $ENV{'NCBI_GENOME_ROOT'};
 my $numArg = scalar @ARGV;
 for(my $i = 0; $i < $numArg; $i++) {
@@ -26,6 +33,8 @@ for(my $i = 0; $i < $numArg; $i++) {
     $rootDir = $nextArg;
     $i++;
   }
+  elsif($arg eq "-c" || $arg eq "--complete") { $completeOnly = 1; }
+  elsif($arg eq "-w" || $arg eq "--wgsonly") { $wgsOnly = 1; }
   elsif($arg eq "-d" || $arg eq "--doall") { $doAll = 1; }
   elsif($arg eq "-h" || $arg eq "--help") { help($version); }
   elsif($arg eq "-v" || $arg eq "--version") { version($version); }
@@ -40,29 +49,39 @@ print STDERR "Prokaryotic Genome NCBI Processing Script $version [Mar 2014]\n";
 print STDERR "###########################################################\n";
 
 # Set up local directories and remote ftp site
-my $gbkDir = "$rootDir/genbank";
-my $compFnaDir = "$gbkDir/complete_genome_fasta";
-my $compGbkDir = "$gbkDir/complete_genome_gbk";
-my $compProdDir = "$gbkDir/complete_prodigal";
-my $compMetaDir = "$gbkDir/complete_metadata";
-my $wgsFnaDir = "$gbkDir/wgs_genome_fasta";
-my $wgsGbkDir = "$gbkDir/wgs_genome_gbk";
-my $wgsProdDir = "$gbkDir/wgs_prodigal";
-my $wgsMetaDir = "$gbkDir/wgs_metadata";
-my $backupDir = "$gbkDir/backup";
-my $summary = "$gbkDir/genbank.summary.txt";
-my $ncbiText = "$gbkDir/ncbi.genomes.txt";
-my $backupSummary = "$backupDir/genbank.summary.txt";
+my $compFnaDir = "$rootDir/complete_genome_fasta";
+my $compGbkDir = "$rootDir/complete_genome_gbk";
+my $compFaaDir = "$rootDir/complete_genome_faa";
+my $compProdDir = "$rootDir/complete_prodigal";
+my $compMetaDir = "$rootDir/complete_metadata";
+my $wgsFnaDir = "$rootDir/wgs_genome_fasta";
+my $wgsGbkDir = "$rootDir/wgs_genome_gbk";
+my $wgsFaaDir = "$rootDir/wgs_genome_faa";
+my $wgsProdDir = "$rootDir/wgs_prodigal";
+my $wgsMetaDir = "$rootDir/wgs_metadata";
+my $backupDir = "$rootDir/backup";
+my $ncbiText = "$rootDir/ncbi.genomes.txt";
+our $summary = "$rootDir/genbank.summary.txt";
+our $backupSummary = "$backupDir/genbank.summary.txt";
 
 # If metadata directory doesn't exist, then create it.
-if(!(-e "$compMetaDir")) { 
+if(!(-e "$compMetaDir") && $wgsOnly == 0) { 
   print STDERR "Creating $compMetaDir since it doesn't exist...\n";
   mkdir "$compMetaDir" or die "...Error creating $compMetaDir\n";
 }
-if(!(-e "$wgsMetaDir")) { 
+if(!(-e "$compFaaDir") && $wgsOnly == 0) { 
+  print STDERR "Creating $compFaaDir since it doesn't exist...\n";
+  mkdir "$compFaaDir" or die "...Error creating $compFaaDir\n";
+}
+if(!(-e "$wgsMetaDir") && $completeOnly == 0) { 
   print STDERR "Creating $wgsMetaDir since it doesn't exist...\n";
   mkdir "$wgsMetaDir" or die "...Error creating $wgsMetaDir\n";
 }
+if(!(-e "$wgsFaaDir") && $completeOnly == 0) { 
+  print STDERR "Creating $wgsFaaDir since it doesn't exist...\n";
+  mkdir "$wgsFaaDir" or die "...Error creating $wgsFaaDir\n";
+}
+
 # If summary file doesn't exist, then create it
 if(!(-e "$summary")) {
   open FH, ">$summary" or die "...error creating $summary\n";
@@ -94,10 +113,7 @@ print $summaryFh "Proteins\tRelease Date\tModify Date\tStatus\tCenter\t";
 print $summaryFh "Biosample Acc\tProd Protein File\tFasta File\n";
 
 # Cycle through NCBI genomes file and process anything with fasta or
-# gbk files more recent than the metadata files.  The script checks for the
-# existence of WGS or Complete FASTA directories.  If they don't exist, it
-# assumes the user isn't using them in his/her repository and skips that
-# type.
+# gbk files more recent than the metadata files.
 print "Processing genomes...\n";
 my $ncbiFh, my $id, my $fnaFile, my $gbkFile, my $metaFile, my $prodFile;
 my %sawAssembly, my $numSucc = 0, my $numFail = 0;
@@ -118,8 +134,7 @@ while(my $line = <$ncbiFh>) {
   }
 
   if($ncbiInfo[12] =~ /^[A-Z][A-Z][A-Z][A-Z]/) {
-    next if(!(-e $wgsFnaDir)); # skip wgs if the fasta dir doesn't exist
-    next if(!(-e $wgsGbkDir)); # skip wgs if the gbk dir doesn't exist
+    next if($completeOnly == 1);
     $sawAssembly{$id} = 1;
     $fnaFile = "$wgsFnaDir/$id.fna";
     $gbkFile = "$wgsGbkDir/$id.gbk";
@@ -128,8 +143,7 @@ while(my $line = <$ncbiFh>) {
   }
   elsif($ncbiInfo[8] ne "-" || $ncbiInfo[9] ne "-" ||
         $ncbiInfo[10] ne "-" || $ncbiInfo[11] ne "-") {
-    next if(!(-e $compFnaDir)); # skip complete if the fasta dir doesn't exist
-    next if(!(-e $compGbkDir)); # skip complete if the gbk dir doesn't exist
+    next if($wgsOnly == 1);
     $sawAssembly{$id} = 1;
     $fnaFile = "$compFnaDir/$id.fna";
     $gbkFile = "$compGbkDir/$id.gbk";
@@ -158,6 +172,7 @@ while(my $line = <$ncbiFh>) {
     next;
   }
 
+  # Print information to the genbank summary file
   my @localInfo = split /[\t\r\n]+/, $metaData;
   print $summaryFh "$localInfo[0]\t$localInfo[1]\t";
   for(my $i = 0; $i < 6; $i++) { print $summaryFh "$ncbiInfo[$i]\t"; }
@@ -166,8 +181,8 @@ while(my $line = <$ncbiFh>) {
   print $summaryFh "$localInfo[4]\t$localInfo[7]\t";
   print $summaryFh "$localInfo[8]\t$localInfo[9]\t";
   for(my $i = 14; $i < 21; $i++) { print $summaryFh "$ncbiInfo[$i]\t"; }
-  $prodFile = substr($prodFile, length($gbkDir));
-  $fnaFile = substr($fnaFile, length($gbkDir));
+  $prodFile = substr($prodFile, length($rootDir));
+  $fnaFile = substr($fnaFile, length($rootDir));
   print $summaryFh "$prodFile\t$fnaFile\n";
   $numSucc++;
 }
@@ -179,7 +194,7 @@ print STDERR " $numFail failures.\n";
 # Now delete complete genome metadata files that we no longer need
 print STDERR "Deleting local metadata files that are no longer needed...\n";
 my $numDel = 0;
-if(-e $compFnaDir) { # user has complete genomes in repository
+if($wgsOnly == 0) {
   opendir DH, $compMetaDir or die "...open failed on $compMetaDir\n";
   while(my $dline = readdir(DH)) {
     next if($dline !~ /\.txt$/);
@@ -193,7 +208,7 @@ if(-e $compFnaDir) { # user has complete genomes in repository
   closedir(DH);
 }
 # Same for WGS metadata files
-if(-e $wgsFnaDir) { # user has WGS genomes in repository
+if($completeOnly == 0) {
   opendir DH, $wgsMetaDir or die "...open failed on $wgsMetaDir\n";
   while(my $dline = readdir(DH)) {
     next if($dline !~ /\.txt$/);
@@ -211,9 +226,9 @@ exit 0;
 
 # Subroutine to see if the metadata file is up to date.
 # If so, return 1.  If not, return 0.
-sub upToDate() {
+sub upToDate($@) {
   my $trgFile = shift @_;
-  my @srcFileList = @_; 
+  my @srcFileList = @_;
   my $trgFh, my $srcFh;
   my $trgTime, my $srcTime;
 
@@ -232,11 +247,8 @@ sub upToDate() {
 }
 
 # Subroutine to process a genome.
-sub processGenome() {
-  my $id = shift @_;
-  my $fastaFile = shift @_;
-  my $gbkFile = shift @_;
-  my $metaFile = shift @_;
+sub processGenome($$$$) {
+  my ($id, $fastaFile, $gbkFile, $metaFile) = @_;
   my $sfh, my $metaFh;
 
   if(open($metaFh, ">$metaFile") == 0) { 
@@ -349,8 +361,6 @@ sub processGenome() {
   $seqCtr++;
 
   # Output final information to summary file
-  # Note that we leave non-bacterial/archaeal genomes in this
-  # file so we won't have to keep re-processing them every day.
   my @sortedChecksum = (), my $finalChecksum;
   my $finalSeqLen = 0, my $finalGC = 0.0, my $finalNonBases = 0;
   my $finalNumGaps = 0, my $catMD5; my $keep = "Y";
@@ -381,23 +391,23 @@ sub processGenome() {
 }
 
 # Print help message and exit
-sub help() {
-  my $version = shift @_;
+sub help($) {
+  my $version = @_;
   print STDERR "\nNCBI Prokaryotic Genome Processing Script $version\n\n";
-  print STDERR "processGenbank.pl [-d] [-h] [-r <root dir>] [-v]\n\n";
-  print STDERR "-d,--doall   :   Do a full download (default: ";
+  print STDERR "processGenbank.pl [-c] [-d] [-h] [-r <root dir>] [-v] [-w]\n\n";
+  print STDERR "-c,--complete:   Only process complete genomes.\n";
+  print STDERR "-d,--doall   :   Reprocess everything (default: ";
   print STDERR "only do incremental update.\n";
   print STDERR "-h,--help    :   Print help information and exit.\n";
-  print STDERR "-r,--root    :   Specify root directory (data is placed in";
-  print STDERR "  <root>/genbank).\n";
-  print STDERR "-v,--version :   Print version information and exit.\n\n";
+  print STDERR "-r,--root    :   Specify root directory.\n";
+  print STDERR "-v,--version :   Print version information and exit.\n";
+  print STDERR "-w,--wgsonly :   Only process WGS genomes.\n\n";
   exit(0);
 }
 
 # Print version and exit
-sub version() {
-  my $version = shift @_;
+sub version($) {
+  my $version = @_;
   print STDERR "NCBI Prokaryotic Genome Downloader $version\n";
   exit(0);
 }
-

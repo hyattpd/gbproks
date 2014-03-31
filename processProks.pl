@@ -64,7 +64,11 @@ my $ncbiText = "$rootDir/ncbi.genomes.txt";
 our $summary = "$rootDir/genbank.summary.txt";
 our $backupSummary = "$backupDir/genbank.summary.txt";
 
-# If metadata directory doesn't exist, then create it.
+# If backup/faa/metadata directories don't exist, then create them.
+if(!(-e "$backupDir")) { 
+  print STDERR "Creating $backupDir since it doesn't exist...\n";
+  mkdir "$backupDir" or die "...Error creating $backupDir\n";
+}
 if(!(-e "$compMetaDir") && $wgsOnly == 0) { 
   print STDERR "Creating $compMetaDir since it doesn't exist...\n";
   mkdir "$compMetaDir" or die "...Error creating $compMetaDir\n";

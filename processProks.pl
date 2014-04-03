@@ -125,7 +125,7 @@ my $metaData;
 open $ncbiFh, $ncbiText or die "...couldn't open $ncbiText for reading\n";
 while(my $line = <$ncbiFh>) {
   next if($line =~ /^#/);
-  my @ncbiInfo = split /[\n\r\t]+/, $line;
+  my @ncbiInfo = split /\t/, $line;
 
   # Skip if no assembly id for this genome
   $id = $ncbiInfo[21];

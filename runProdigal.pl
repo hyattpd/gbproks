@@ -65,7 +65,7 @@ for(my $i = 0; $i < $numArg; $i++) {
     $taskId = $nextArg;
     $i++;
   }
-  elsif($arg eq "-d" || $arg eq "--doall") { $doAll = 1; }
+  elsif($arg eq "-a" || $arg eq "--doall") { $doAll = 1; }
   elsif($arg eq "-h" || $arg eq "--help") { help($version); }
   elsif($arg eq "-v" || $arg eq "--version") { version($version); }
   else { die "Error: unrecognized option $arg.  Do $0 --help for commands.\n"; }
@@ -248,10 +248,10 @@ sub runProdigal() {
 sub help() {
   my $version = shift @_;
   print STDERR "\nNCBI Prokaryotic Genome Downloader $version\n\n";
-  print STDERR "runProdigalGenbank.pl [-d] [-h] [-n <numtask>] ";
-  print STDERR "[-p <prod path>]\n";
+  print STDERR "runProdigalGenbank.pl [-a] [-h] [-n <numtask>] ";
+  print STDERR "[-p <prod path>] [-r <root dir>] [-t <id>] [-v]\n";
   print STDERR "                      [-r <root dir>] [-t <taskID>] [-v]\n\n";
-  print STDERR "-d,--doall   :   Do a full download (default: ";
+  print STDERR "-a,--doall   :   Do a full download (default: ";
   print STDERR "only do incremental update.\n";
   print STDERR "-h,--help    :   Print help information and exit.\n";
   print STDERR "-r,--root    :   Specify root directory (data is placed in";

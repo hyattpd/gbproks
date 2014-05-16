@@ -35,7 +35,7 @@ for(my $i = 0; $i < $numArg; $i++) {
   }
   elsif($arg eq "-c" || $arg eq "--complete") { $completeOnly = 1; }
   elsif($arg eq "-w" || $arg eq "--wgsonly") { $wgsOnly = 1; }
-  elsif($arg eq "-d" || $arg eq "--doall") { $doAll = 1; }
+  elsif($arg eq "-a" || $arg eq "--doall") { $doAll = 1; }
   elsif($arg eq "-h" || $arg eq "--help") { help($version); }
   elsif($arg eq "-v" || $arg eq "--version") { version($version); }
   else { die "Error: unrecognized option $arg.  Do $0 --help for commands.\n"; }
@@ -398,9 +398,9 @@ sub processGenome($$$$) {
 sub help($) {
   my $version = @_;
   print STDERR "\nNCBI Prokaryotic Genome Processing Script $version\n\n";
-  print STDERR "processGenbank.pl [-c] [-d] [-h] [-r <root dir>] [-v] [-w]\n\n";
+  print STDERR "$0 [-a] [-c] [-h] [-r <root dir>] [-v] [-w]\n\n";
+  print STDERR "-a,--doall   :   Reprocess everything (default: ";
   print STDERR "-c,--complete:   Only process complete genomes.\n";
-  print STDERR "-d,--doall   :   Reprocess everything (default: ";
   print STDERR "only do incremental update.\n";
   print STDERR "-h,--help    :   Print help information and exit.\n";
   print STDERR "-r,--root    :   Specify root directory.\n";

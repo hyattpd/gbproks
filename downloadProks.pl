@@ -17,6 +17,7 @@ sub version($);
 # Parse command line arguments
 my $version = "v0.6.0";
 my $doAll = 0;
+my $doDelete = 0;
 my $completeOnly = 0;
 my $wgsOnly = 0;
 my $unzipOnly = 0;
@@ -35,7 +36,8 @@ for(my $i = 0; $i < $numArg; $i++) {
   elsif($arg eq "-c" || $arg eq "--complete") { $completeOnly = 1; }
   elsif($arg eq "-w" || $arg eq "--wgsonly") { $wgsOnly = 1; }
   elsif($arg eq "-u" || $arg eq "--unzip") { $unzipOnly = 1; }
-  elsif($arg eq "-d" || $arg eq "--doall") { $doAll = 1; }
+  elsif($arg eq "-a" || $arg eq "--doall") { $doAll = 1; }
+  elsif($arg eq "-d" || $arg eq "--dodel") { $doDelete = 1; }
   elsif($arg eq "-h" || $arg eq "--help") { help($version); }
   elsif($arg eq "-v" || $arg eq "--version") { version($version); }
   else { die "Error: unrecognized option $arg.  Do $0 --help for commands.\n"; }
@@ -339,28 +341,30 @@ if($unzipOnly == 0) {
   print STDERR "$numFail failures.\n";
   
   # Delete any obsolete files which are no longer in NCBI's genome list.
-  my @directories = ( $wgsDlDir, $wgsFnaDir, $wgsGbkDir, $compFnaDir, 
-                      $compGbkDir );
-  my $numDel = 0;
-  print STDERR "Deleting local files that are no longer needed...\n";
-  foreach my $dir (@directories) {
-    next if($completeOnly == 1 && $dir =~ /\/wgs\_/);
-    next if($wgsOnly == 1 && $dir =~ /\/complete\_/);
-    if(opendir(DH, $dir) == 0) {
-      warn "...open failed on $dir, unable to delete files...\n";
-      next;
+  if($doDelete == 1) {
+    my @directories = ( $wgsDlDir, $wgsFnaDir, $wgsGbkDir, $compFnaDir, 
+                        $compGbkDir );
+    my $numDel = 0;
+    print STDERR "Deleting local files that are no longer needed...\n";
+    foreach my $dir (@directories) {
+      next if($completeOnly == 1 && $dir =~ /\/wgs\_/);
+      next if($wgsOnly == 1 && $dir =~ /\/complete\_/);
+      if(opendir(DH, $dir) == 0) {
+        warn "...open failed on $dir, unable to delete files...\n";
+        next;
+      }
+      while(my $dline = readdir(DH)) {
+        next if($dline eq "." || $dline eq "..");
+        my $id = ($dline =~ /^([^\.]+)\./)[0];
+        next if(defined($id) && defined($sawAssembly{$id}));
+        print STDERR "...deleting file $dir/$dline...\n";
+        unlink("$dir/$dline");
+        $numDel++;
+      }
+      closedir DH;
     }
-    while(my $dline = readdir(DH)) {
-      next if($dline eq "." || $dline eq "..");
-      my $id = ($dline =~ /^([^\.]+)\./)[0];
-      next if(defined($id) && defined($sawAssembly{$id}));
-      print STDERR "...deleting file $dir/$dline...\n";
-      unlink("$dir/$dline");
-      $numDel++;
-    }
-    closedir DH;
+    print STDERR "...deleted $numDel obsolete files.\n";
   }
-  print STDERR "...deleted $numDel obsolete files.\n";
 }
 
 # Uncompress any WGS files that need to be uncompressed
@@ -442,11 +446,13 @@ sub upToDate($$$) {
 sub help($) {
   my $version = @_;
   print STDERR "\nNCBI Prokaryotic Genome Downloader $version\n\n";
-  print STDERR "downloadGenbank.pl [-c] [-d] [-h] [-r <root dir>] [-u] [-v]";
+  print STDERR "$0 [-a] [-c] [-d] [-h] [-r <root dir>] [-u] [-v]";
   print STDERR " [-w]\n\n";
-  print STDERR "-c,--complete:   Only download complete genomes.\n";
-  print STDERR "-d,--doall   :   Do a full download/decompression (default: ";
+  print STDERR "-a,--doall   :   Do a full download/decompression (default: ";
   print STDERR "only do incremental update.\n";
+  print STDERR "-d,--dodel   :   Delete files not in NCBI's list (default";
+  print STDERR " false).\n";
+  print STDERR "-c,--complete:   Only download complete genomes.\n";
   print STDERR "-h,--help    :   Print help information and exit.\n";
   print STDERR "-r,--root    :   Specify root directory.\n";
   print STDERR "-u,--unzip   :   Only decompress files (don't do downloads).\n";
